@@ -34,10 +34,12 @@ fn main() -> Result<()> {
         let scriptures = bible
             .into_par_iter()
             .filter(|scripture| {
+                // Check if provided the book name matches the ID or full book name
                 (scripture.book_name.eq_ignore_ascii_case(&key.book)
                     || scripture.book_id.eq_ignore_ascii_case(&key.book))
+                    // Match if the chapter matches the supplied chapter
                     && scripture.chapter == key.chapter
-                    //&& scripture.verse == key.verse
+                    // Check if the verse matches any of the supplied verses
                     && key.verses.par_iter().any(|&v| v == scripture.verse)
             })
             .collect();
@@ -59,7 +61,7 @@ fn main() -> Result<()> {
 fn parse_args() -> Result<LookupKey> {
     let mut args: Vec<String> = args().collect();
     if args.len() < 4 {
-        println!("Usage: `bibterm [book] [chapter] [verse]`");
+        println!("Usage: `bibterm [book] [chapter] [verses]`");
         exit(1);
     }
     let book;
@@ -111,12 +113,6 @@ fn display(scriptures: Vec<Scripture>) {
         println!("{} {}:", scriptures[0].book_name, scriptures[0].chapter);
         for scripture in scriptures {
             println!("\t{}: {}", scripture.verse, scripture.text);
-            /*
-            println!(
-                "{} {}:{}\n\t{}",
-                scrip.book_name, scrip.chapter, scrip.verse, scrip.text
-            );
-            */
         }
     } else {
         println!("Could not find that scripture");
