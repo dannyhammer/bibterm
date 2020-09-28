@@ -1,10 +1,9 @@
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::from_str;
 use std::env::args;
 use std::fs::read_to_string;
-use std::process::exit;
 
 /// A single verse
 #[derive(Deserialize, Debug)]
@@ -25,33 +24,32 @@ struct LookupKey {
 }
 
 fn main() -> Result<()> {
-    if let Ok(key) = parse_args() {
-        // Read in the json file of scriptures and store as a vector
-        let data = read_to_string("./kjv.json")?;
-        let bible: Vec<Scripture> = from_str(&data)?;
+    match parse_args() {
+        Ok(key) => {
+            let data = read_to_string("./kjv.json")?;
+            let bible: Vec<Scripture> = from_str(&data)?;
 
-        // Search for the specified verses
-        let scriptures = bible
-            .into_par_iter()
-            .filter(|scripture| {
-                // Check if provided the book name matches the ID or full book name
-                (scripture.book_name.eq_ignore_ascii_case(&key.book)
+            // Search for the specified verses
+            let scriptures = bible
+                .into_par_iter()
+                .filter(|scripture| {
+                    // Check if provided the book name matches the ID or full book name
+                    (scripture.book_name.eq_ignore_ascii_case(&key.book)
                     || scripture.book_id.eq_ignore_ascii_case(&key.book))
                     // Match if the chapter matches the supplied chapter
                     && scripture.chapter == key.chapter
                     // Check if the verse matches any of the supplied verses
                     && key.verses.par_iter().any(|&v| v == scripture.verse)
-            })
-            .collect();
+                })
+                .collect();
 
-        display(scriptures);
-
-        Ok(())
-    } else {
-        println!("Error parsing scripture lookup key");
-        println!("Please ensure you enter a valid book, chapter, and verse");
-        exit(2);
+            display(scriptures);
+        }
+        Err(e) => {
+            println!("{}", e);
+        }
     }
+    Ok(())
 }
 
 /// Parses command-line arguments
@@ -60,10 +58,10 @@ fn main() -> Result<()> {
 /// Returns the book, chapter, and verse range to lookup
 fn parse_args() -> Result<LookupKey> {
     let mut args: Vec<String> = args().collect();
-    if args.len() < 4 {
-        println!("Usage: `bibterm [book] [chapter] [verses]`");
-        exit(1);
-    }
+    ensure!(
+        args.len() >= 4,
+        "Usage: `bibterm [book] [chapter] [verses]`"
+    );
     let book;
 
     // If the first argument is a number, concatenate it with the book
