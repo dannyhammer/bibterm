@@ -23,10 +23,12 @@ struct LookupKey {
     verses: Vec<i32>,
 }
 
+const PATH: &'static str = "./kjv.json";
+
 fn main() -> Result<()> {
     match parse_args() {
         Ok(key) => {
-            let data = read_to_string("./kjv.json")?;
+            let data = read_to_string(PATH)?;
             let bible: Vec<Scripture> = from_str(&data)?;
 
             // Search for the specified verses
@@ -39,7 +41,11 @@ fn main() -> Result<()> {
                     // Match if the chapter matches the supplied chapter
                     && scripture.chapter == key.chapter
                     // Check if the verse matches any of the supplied verses
-                    && key.verses.par_iter().any(|&v| v == scripture.verse)
+                    && 
+                    if !key.verses.is_empty() {  key.verses.par_iter().any(|&v| v == scripture.verse) 
+                    } else {
+                        true
+                    }
                 })
                 .collect();
 
@@ -59,8 +65,8 @@ fn main() -> Result<()> {
 fn parse_args() -> Result<LookupKey> {
     let mut args: Vec<String> = args().collect();
     ensure!(
-        args.len() >= 4,
-        "Usage: `bibterm [book] [chapter] [verses]`"
+        args.len() >= 3,
+        "Usage: `bibterm <book> <chapter> [verses]`"
     );
     let book;
 
@@ -79,24 +85,26 @@ fn parse_args() -> Result<LookupKey> {
     // Verses can either be listed by spaces or ranged by a hyphen
     let mut verses: Vec<i32> = Vec::new();
     // If the user entered a verse range
-    if args[3].contains("-") {
-        // Obtain the upper and lower bounds
-        let verse_args: Vec<&str> = args[3].split("-").collect();
+    if args.len() > 3 {
+        if args[3].contains("-") {
+            // Obtain the upper and lower bounds
+            let verse_args: Vec<&str> = args[3].split("-").collect();
 
-        // Parse the bounds
-        let start_verse = verse_args[0].parse::<i32>()?;
-        let end_verse = verse_args[1].parse::<i32>()?;
+            // Parse the bounds
+            let start_verse = verse_args[0].parse::<i32>()?;
+            let end_verse = verse_args[1].parse::<i32>()?;
 
-        // Generate a verse range
-        for verse in start_verse..end_verse + 1 {
-            verses.push(verse);
+            // Generate a verse range
+            for verse in start_verse..end_verse + 1 {
+                verses.push(verse);
+            }
+        } else {
+            // Otherwise, just keep parsing verses as they were entered
+            for verse in args[3..].iter() {
+                verses.push(verse.parse::<i32>()?);
+            }
         }
-    } else {
-        // Otherwise, just keep parsing verses as they were entered
-        for verse in args[3..].iter() {
-            verses.push(verse.parse::<i32>()?);
-        }
-    }
+    } 
 
     Ok(LookupKey {
         book,
